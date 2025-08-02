@@ -24,6 +24,7 @@ const registerUser = asyncHandler(async (req, res) =>{
     //9 : return response
 
     //console.log("req.body he ye : ",req.body);
+
     /*req.body me ye ata he :  [Object: null prototype] {
     fullName: 'Jagjitsssddhmf',
     email: 'jagjit@gmailssxsxt',
@@ -348,9 +349,122 @@ const refreshAccessToken = asyncHandler(async(req,res)=>{
 })
 
 
+
+
+const changeCurrentPassword = asyncHandler(async(req,res)=>{
+
+
+    const {oldPassword , newPassword} = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    const isPasswordValidforchange = await user.isPassowrdCorrect(oldPassword);
+
+    if(!isPasswordValidforchange)
+    {
+        throw new ApiError(400,"Invalid Old Password");
+    }
+
+    user.password = newPassword;
+    await user.save({validatBeforeSave:false}); //dont run other validations
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "Password Changed"
+            )
+        )
+
+})
+
+
+const getCurrentUser = asyncHandler(async(req,res)=>{
+    return res
+    .status(200)
+    .json(200,req.user,"current user fetched successfully")
+})
+
+
+// Async handler wrapper to catch errors in async functions
+const updateAccountDetails = asyncHandler(async (req, res) => {
+
+    // Destructure fullName and email from request body
+    const { fullName, email } = req.body;
+
+    // Check if both fields are provided
+    if (!fullName || !email) {
+        // If not, throw an error with 400 Bad Request status
+        throw new ApiError(400, "All fields are required");
+    }
+
+    // Update user in database using their ID
+    const user = await User.findByIdAndUpdate(
+        req.user?._id, // Find the user by their ID which is extracted from the authenticated request
+
+        {
+            // Use MongoDB's $set operator to update fields
+            $set: {
+                fullName,       // Update fullName with new value
+                email: email,   // Update email (uses ES6 shorthand — email: email)
+            }
+        },
+
+        {
+            new: true //new :true > Return the updated document instead of the old one
+        }
+    ).select("-password"); // Exclude the password field when returning the user object
+
+    // Send the updated user object in response
+    res.status(200).json(
+        new ApiResponse(200,"Account Details Updated Successfull")
+    );
+});
+
+
+const updateUserAvatar = asyncHandler(async(req,res)=>{
+    const avatarLocalPath = req.file?.path;
+
+    if(!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+    if(!avarat.url){
+        throw new ApiError(400,"Error while updating and uploading on avatar image on cloudinary")
+    }
+
+    const user = await User.findByIdAndDelete(
+        req.user?._id,
+        {
+            $set:{
+                avatar: avatar.url
+            }
+        },
+        {new:true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,"Avatar Image Updated Successfully")
+    )
+})
+
+
+
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar
+
 }
